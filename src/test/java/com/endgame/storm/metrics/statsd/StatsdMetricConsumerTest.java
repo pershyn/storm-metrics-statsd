@@ -68,8 +68,20 @@ public class StatsdMetricConsumerTest extends TestCase {
 
 	public void testCleanString() {
 		assertEquals("test", undertest.clean("test"));
-		assertEquals("test_name", undertest.clean("test/name"));
-		assertEquals("test_name", undertest.clean("test.name"));
+		assertEquals("test.name", undertest.clean("test/name"));
+		assertEquals("test.name", undertest.clean("test.name"));
+		assertEquals("test.name", undertest.clean("test:name"));
+
+		// handle kafka special case
+		assertEquals("0.fetchAPIMessageCount",
+                 undertest.clean("Partition{host=host.test.com:9092, partition=0}/fetchAPIMessageCount"));
+	}
+
+  public void testCleanHostName() {
+		// mynode.mydoman.org -> mynode_mydomain_org
+		// mynode.mydomain.org:myport -> mynode_mydomain_org.port
+		assertEquals("mynode_mydomain_org", undertest.cleanHostName("mynode.mydoman.org"));
+		assertEquals("mynode_mydomain_org.1234", undertest.cleanHostName("mynode.mydomain.org:1234"));
 	}
 
 	public void testPrepare() {
@@ -119,9 +131,9 @@ public class StatsdMetricConsumerTest extends TestCase {
 		// they should not show up here
 
 		List<Metric> expected = ImmutableList.<Metric> of(new Metric(
-				"host1.6701.myBolt7.my_int", 57), new Metric(
-				"host1.6701.myBolt7.my_long", 57), new Metric(
-				"host1.6701.myBolt7.my_float", 222), new Metric(
+				"host1.6701.myBolt7.my.int", 57), new Metric(
+				"host1.6701.myBolt7.my.long", 57), new Metric(
+				"host1.6701.myBolt7.my.float", 222), new Metric(
 				"host1.6701.myBolt7.my_double", 56), new Metric(
 				"host1.6701.myBolt7.points.count", 123), new Metric(
 				"host1.6701.myBolt7.points.time", 2342234));

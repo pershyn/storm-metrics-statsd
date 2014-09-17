@@ -89,7 +89,27 @@ public class StatsdMetricConsumer implements IMetricsConsumer {
 	}
 
 	String clean(String s) {
-		return s.replace('.', '_').replace('/', '_');
+		// change the metrics format to be compatible with statsd.
+		// we treat / as separator, so it will be trasformed to .
+		// we also treat : as separator, so it will be transformed to .
+		// we don't lowerCase because of kafkaOffset up to now.
+
+		// We also have to ignore Kafka format for partitions.
+		// kafka spout tend to produce names like this:
+		// "Partition{host=kafka-06.mytest.org:9092, partition=0}/fetchAPIMessageCount=0"
+		// we want to see it like "0.fetchAPIMessageCount=0"
+		String pattern = "Partition\\{.*partition\\=(\\d)\\}";
+		String updated = s.replaceAll(pattern, "$1"); 
+
+		return updated.replace('/', '.').replace(':', '.');
+	}
+
+	String cleanHostName(String s) {
+		// this function is used to transform host names to single ids.
+		// mynode.mydoman.org -> mynode_mydomain_org
+		// mynode.mydomain.org:myport -> mynode_mydomain_org.port.
+
+		return s.replace('.', '_').replace(':', '.');
 	}
 
 	@Override
@@ -139,9 +159,9 @@ public class StatsdMetricConsumer implements IMetricsConsumer {
 		List<Metric> res = new LinkedList<>();
 
 		StringBuilder sb = new StringBuilder()
-				.append(clean(taskInfo.srcWorkerHost)).append(".")
+				.append(cleanHostName(taskInfo.srcWorkerHost)).append(".")
 				.append(taskInfo.srcWorkerPort).append(".")
-				.append(clean(taskInfo.srcComponentId)).append(".");
+				.append(cleanHostName(taskInfo.srcComponentId)).append(".");
 
 		int hdrLength = sb.length();
 
